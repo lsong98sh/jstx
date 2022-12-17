@@ -1,0 +1,45 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	循环使用 jst-for 标签实现。值得内容和 js 的 for 语法一致。比如：jst-for="key in Object.keys()"。<br>
+	jst-each 是一个扩展语法。可以使用数组（Array或者ArrayLike）或者字符串作为参数。语法：jst-each="参数名 : 数组"
+</div>
+<div id="test">
+	<div jst-for="let i=0; i < 5; ++ i" jst-text="this is line {{i}}"></div>
+
+	<span jst-each="e : 'abcde'" jst-text="{{e}}{{e$last?'':','}}"></span><br>
+
+	<span jst-each="e : ary" jst-text="{{e}}{{e$last?'':','}}"></span><br>
+
+	** each中可使用参数名 加后缀 $first, $last, $odd, $even, $index, $arry 这样的固定变量。<br>
+	<span jst-each="e : ary" jst-text="{{e}}{{e$index}} "></span><br>
+	
+	** for 和 each 不能同时使用。以下代码并不会出现预期结果 **
+	<div jst-if="grade > 18"
+		 jst-each="subject: subjects"
+		 jst-for="let i=0; i < subject.teachers.length; ++ i"
+		 jst-text="{{subject.teachers[i]}}"></div>
+		 
+    ** 正确的写法
+	<div jst-if="grade > 18" jst-each="subject: subjects">
+		 <span jst-for="let i=0; i < subject.teachers.length; ++ i" jst-text="{{subject.teachers[i]}} "></span>
+	</div>
+		 
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({ary: ['x', 'y', 'z'], 
+		grade: 20, 
+		subjects:[
+			{name: "chinese", teachers:['张三','李四','王五']},
+			{name: "math", teachers:['牛七','马八']},
+			{name: "english", teachers:['John','marray']}
+		],
+	}).then(function(){
+		window.parent.document.getElementById("loop").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

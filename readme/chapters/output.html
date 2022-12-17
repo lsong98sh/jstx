@@ -1,0 +1,24 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	输出指令分为两种。一种是通过HTML文本转义后输出。另一种是直接输出HTML。下面的示例代码展示了两种输出方式的三种写法。
+	
+</div>
+
+<div id="test">
+	<div>非标签直接转义输出：{{text}}</div><br>
+	<div>jst-text 指令输出：<span jst-text="{{text}}"></span></div><br>
+	<div>jst-html 指令输出：<span jst-html="{{text}}"></span></div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({
+		text: "hello world!\r\n<span>this is second line</span>"
+	}).then(function(){
+		window.parent.document.getElementById("output").innerText = j.template.code;
+	})
+	
+})();
+	
+</script>

@@ -1,0 +1,21 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	在模板中，通过 script 标签，可以在节前渲染前进行一些处理。脚本类型时 script/jst。使用的语法和js完全一致。
+</div>
+<div id="test">
+	<script type="script/jst">
+		var prefix = "L:"
+	</script>
+	<div jst-for="let i=0; i < 5; ++ i" jst-text="this is line {{prefix}}{{i}}"></div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({}).then(function(){
+		window.parent.document.getElementById("script").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

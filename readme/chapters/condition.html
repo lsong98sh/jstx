@@ -1,0 +1,33 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	通过条件判断，可以控制元素的输出与不输出。不同于显示、隐藏，当不满足条件时，对应元素不会存在。
+</div>
+<div id="test">
+	<div><button id="switch" type="button">变换</button></div><br>
+	<div jst-if="visible" >visible == true</div>
+	<div jst-if="!visible" >visible == false</div>
+	
+	<br>
+	<div>visible == {{visible}}</div>
+
+	<br>
+	<div jst-style="display:{{visible? 'block' : 'none'}}" >显示隐藏的内容</div>
+
+</div>
+
+<script>
+(function(){
+	var d = {visible: true};
+	var j = new jst(document.getElementById("test"));
+	$("#test").on("click", "#switch", function(){
+		d.visible = !d.visible;
+		j.render(d);
+	});
+	j.render(d).then(function(){
+		window.parent.document.getElementById("condition").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

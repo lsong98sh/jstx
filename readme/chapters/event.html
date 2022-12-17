@@ -1,0 +1,72 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	jstx 的核心定位是在模板渲染上。对于事件的处理，完全遵循浏览器的标准。建议使用jQuery处理以减少浏览器兼容性问题。由于内部渲染后，元素可能会改变，建议在模板容器上绑定事件。
+	作为组件，由于其复杂的包含关系，在模板容器上绑定事件时无法使用合适的选择器来区分。比如：一个多页签组件，其中的页签中包含了另一个多页签组件。
+	jstx 可以使用几种方式来实现事件处理。
+</div>
+<div id="test">
+	<div>
+		<div>事件处理涉及四个jst组件变量。$jst 代表当前组件，$target 代表组件的父元素，$ctl 代表当前渲染的元素，$data 代表当前渲染的数据。</div>
+		
+		<div>全局的事件处理就是最原始的事件处理方式。处理函数必须定义在全局或者window对象下。</div>
+		<button onclick="click1(this)">点击我</button>
+		<br><br>
+		
+		<div>内部脚本绑定事件一般是通过jst脚本实现。</div>
+		<button name="click2">点击我</button>
+		<script type="script/jst">
+			var ctl = $target.querySelector("[name=click2]");
+			if(ctl.onclick == null){
+				ctl.onclick = function(){
+					alert("click2");
+				}
+			}
+		</script>
+		<br><br>
+		
+		<div>如果是容器类组件，内部还可能包含其他组件，则需要精准绑定元素，一般是通过jst-end + jst脚本实现。</div>
+		<button name="click3" jst-end="bindClickEvent($ctl)">点击我</button>
+		<script type="script/jst">
+			function bindClickEvent(ctl){
+				if(ctl.onclick == null){
+					ctl.onclick = function(){
+						alert("click3");
+					}
+				}
+			}
+		</script>
+		<br><br>
+		
+		<div>通过事件实现内部刷新。</div>
+		<button name="click4" jst-end="bindRefreshEvent($ctl)">刷新({{count}})</button>
+		<script type="script/jst">
+			function bindRefreshEvent(ctl){
+				if(ctl.onclick == null){
+					ctl.onclick = function(){
+						$data.count ++;
+						$jst.render();
+					}
+				}
+			}
+		</script>
+		
+	</div>
+</div>
+
+<script>
+(function(){
+	window.click1 = function(target){
+		alert("click1");
+	}
+
+	var j = new jst(document.getElementById("test"));
+	j.render({
+		count: 1
+	}).then(function(){
+		window.parent.document.getElementById("event").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

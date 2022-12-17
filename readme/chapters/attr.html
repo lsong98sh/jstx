@@ -1,0 +1,35 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	属性设置有两种方式。一种是直接在属性的值上使用{{prop}}输出值的内容。另一种是 属性名前加上jst-标识后使用{{prop}}输出值的内容。
+	两者的区别在于直接使用属性名，如果是style，src 这类的属性，在HTML加载时会产生不必要的错误信息。建议使用属性名前加上jst-标识的方式。
+	下面的示例代码展示了属性的使用，同时展示了下拉框设定默认值的方法。
+	<br><br>
+	要点：在属性中 使用 {{ }} 代表一个字符串的表达式。
+	<br><br>
+	* 本例中，使用了 jQuery 进行事件的处理。jstx 核心定位在模板渲染。事件和双向绑定将在后续章节详述。
+</div>
+<div id="test">
+	<select jst-selected="color">
+		<option value="x-red">红色背景</option>
+		<option value="x-yellow">黄色背景</option>
+		<option value="x-purple">紫色背景</option>
+	</select><br><br>
+	<div jst-style="background-color:{{color.substring(2)}};display:inline-block">选择背景色</div>
+</div>
+
+<script>
+(function(){
+	var d = { color: "x-yellow" };
+	var j = new jst(document.getElementById("test"));
+	j.render(d).then(function(){
+		window.parent.document.getElementById("attr").innerText = j.template.code;
+	})
+	$("#test").on("change", "select", function(){
+		d.color = this.value;
+		j.render()
+	})
+})();
+
+	
+</script>

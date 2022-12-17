@@ -1,0 +1,29 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	通过 jst-include 指令，实现组件化。jst-include 指令指定组件，jst-include-data 指定渲染的数据。<br>
+	下面的示例代码，展示了组件的使用。同时展示了两种传递数据的方式。
+	外部元素可以通过 jst-include-data 指令传递参数给组件，组件内部也可以通过 $jst.target 获取包含本组件的外部元素。继而通过 attr, data 等方式获取需要的数据。
+</div>
+<!-- 模板 -->
+<div id="panel" style="display:none">
+	<script type='script/jst'>
+		var title = $jst.target.getAttribute('title');
+	</script>
+	<div style="padding:5px; background-color: lightgray;" jst-text="{{title}}"></div>
+	<div style="border: 1px solid lightgray;padding: 5px;" jst-text="{{content}}"></div>
+</div>
+
+<div id="test">
+	<div jst-include="panel" title="{{title}}" style="width:300px" jst-include-data="{content: content}">
+	</div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({title: '标题', content: 'this is content'}).then(function(){
+		window.parent.document.getElementById("include").innerText = j.template.code;
+	})
+})();
+</script>
+

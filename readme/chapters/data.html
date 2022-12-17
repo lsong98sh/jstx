@@ -1,0 +1,31 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	在渲染的同时，可以将数据绑定到元素上。对于普通的文本，可以直接设置元素的属性。对于复杂的对象，可以通过 jst-data-? 绑定到元素上。
+	在事件处理中，可以通过 jst.fn.data 获取到绑定到元素上的数据。jst.fn.attr 用来获取元素的属性值。
+	
+</div>
+
+<div id="test">
+	<button id="btn1" jst-for="var i=0; i < 5; ++ i" jst-data-idx="{num: i}">data:{{i}}</button>
+	<br><br>
+	<button id="btn2" jst-for="var i=0; i < 5; ++ i" idx="{{i}}">data:{{i}}</button>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	
+	$("#test").on("click", "#btn1", function($ctl){
+		alert(jst.fx.data(this, "idx").num);
+	});
+	$("#test").on("click", "#btn2", function($ctl){
+		alert(jst.fx.attr(this, "idx"));
+	});
+	j.render().then(function(){
+		window.parent.document.getElementById("data").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

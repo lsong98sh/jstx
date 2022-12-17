@@ -1,0 +1,25 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	一般情况下，在循环中可以使用 jst-if 进行判断。jstx提供了 jst-filter 来实现简单的条件过滤。减少HTML元素的数量。
+	jst-filter 只可用于 jst-for 和 jst-each 中
+</div>
+<div id="test">
+	一般做法
+	<div jst-for="let i=0; i < 5; ++ i">
+		<div jst-if="i%2==0">this is line {{i}}</div>
+	</div>
+	<br>
+	简化写法
+	<div jst-for="let i=0; i < 5; ++ i" jst-filter="i%2==0" jst-text="this is line {{i}}"></div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({}).then(function(){
+		window.parent.document.getElementById("filter").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

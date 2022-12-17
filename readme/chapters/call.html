@@ -1,0 +1,56 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	通过渲染回调脚本，可以实现一些特殊的需求。
+	比如：动画效果，或者对元素内的第三方控件进行初始化。下面的示例代码展示了所有的渲染回调。
+	<br>
+	begin: 某个元素开始渲染前调用。如果含有 jst-for 指令，则在开始循环前调用<br>
+	item-prepare: 含有 jst-for 的元素，在循环内调用<br>
+	item-begin:含有 jst-for 的元素，在循环内，且调满足 jst-filter 条件后，开始渲染前调用<br>
+	item-end:含有 jst-for 的元素，在循环内，且调满足 jst-filter 条件后，结束渲染后调用<br>
+	end:某个元素结束渲染后调用。如果含有 jst-for 指令，则在借宿循环后调用<br>
+	
+</div>
+<div id="test">
+	<script type="script/jst">
+		var data = [];
+		function begin(){
+			data.push("begin");
+		}
+		function item_prepare(i){
+			data.push("item-prepare#" + i);
+		}
+		function item_begin(i){
+			data.push("item-begin#" + i);
+		}
+		function item_end(i){
+			data.push("item-end#" + i);
+		}
+		function end(){
+			data.push("end");
+		}
+	</script>
+	
+	<div jst-begin="begin()" 
+		 jst-for="var i=0; i < 5; ++ i"
+		 jst-item-prepare="item_prepare(i)"
+		 jst-filter="i % 2 == 0"
+		 jst-item-begin="item_begin(i)" 
+		 jst-item-end="item_end(i)" 
+		 jst-end="end()" 
+		 jst-text="{{i}}">
+	</div><br>	
+	data:<br>
+	<div jst-text="{{data.join('\r\n')}}">
+	</div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render().then(function(){
+		window.parent.document.getElementById("call").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

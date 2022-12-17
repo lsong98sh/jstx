@@ -1,0 +1,37 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	通过 jst-recursive 指令，来控制只有满足条件才进行内部渲染。这个标签用于多标签页时，对于隐藏的标签页不进行渲染，可以加速渲染。
+</div>
+
+<div id="test">
+	<label><input name="panel" type="radio" value="1" checked="{{value==1}}">渲染第一个DIV</label>
+	<label><input name="panel" type="radio" value="2" checked="{{value==2}}">渲染第二个DIV</label>
+		
+	<div jst-recursive="value==1" style="border:1px solid gray;padding:1em;display:inline-block;margin:1em;">
+		点击次数：<span jst-text="{{count}}"></span>
+	</div>
+	<div jst-recursive="value==2" style="border:1px solid gray;padding:1em;display:inline-block;margin:1em;">
+		点击次数：<span jst-text="{{count}}"></span>
+	</div>
+</div>
+
+<script>
+(function(){
+	var d = {
+		value: 1,
+		count: 1
+	};
+	var j = new jst(document.getElementById("test"));
+	$("#test").on("click", "input", function(){
+		d.value = this.value;
+		d.count ++;
+		j.render();
+	});
+	j.render(d).then(function(){
+		window.parent.document.getElementById("recursive").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

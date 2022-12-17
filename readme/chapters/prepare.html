@@ -1,0 +1,39 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	预处理主要用于简化组件的写法。预处理是在编译前，对模板所进行的调整处理。实现方式：jst.prepare[选择器]=变换函数 <br>
+	对于vue的用户，可以使用预处理，将 v: 转变为 jst-。
+</div>
+
+<div id="test" style="min-height:8em;">
+	传统写法：<br>
+	<div jst-include="pager" jst-include-data="{start:s, end:e}"></div>
+	<br>
+	预处理后的写法：<br>
+	<pager start="s" end="8"></pager>
+</div>
+
+<script>
+(function(){
+	jst.locator.map["pager"] = "pager.html";
+	jst.prepare["pager"] = function(jst, elm, template){
+		var node = document.createElement("div");
+		node.innerHTML = elm.innerHTML;
+		// 转变为 jst-include 写法
+		let start = elm.getAttribute("start");
+		let end = elm.getAttribute("end");
+		node.setAttribute("jst-include", "pager");
+		node.setAttribute("jst-include-data", "{start: " + start + ", end: " + end +"}");
+		// 替换
+		elm.parentNode.insertBefore(node, elm);
+		elm.parentNode.removeChild(elm);
+	}
+
+	var j = new jst(document.getElementById("test"));
+	j.render({s:1, e:10}).then(function(){
+		window.parent.document.getElementById("prepare").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

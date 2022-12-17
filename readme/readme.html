@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="../src/jst-core.js"></script>
+<script src="../3dparty/jquery.js"></script>
+<style>
+	html, body {
+		width: 100%;
+		height:100%;
+		margin:0;
+		padding:0;
+	}
+	.src {
+		margin-left: 5em;
+		padding: 1em;
+		border: 1px solid #C0C0C0;
+		background-color: #EEEEEE;
+		font-family: "宋体";
+		tab-size:4
+	}
+
+	.readme {
+		margin: 1em 1em 1em 5em;
+	}
+	
+	.result {
+		margin-left: 5em;
+		padding: 1em;
+		border: 1px solid #C0C0C0;
+	}
+	#content {
+		padding-left: 16em;
+		padding-right: 2em;
+	}
+	#toc {
+		position: fixed;
+		width: 16em;
+		left: 0;
+		top: 0;
+		bottom: 0em;
+		background-color:white;
+		overflow-y: scroll;
+	}
+	#toc a {
+		padding: 0 5px;
+		color: black;
+		text-decoration: none;
+	}
+	#toc a:visited {
+		color: black;
+	}
+	#toc a:hover {
+		background: linear-gradient(#ffffff, #ffffff,#ffffff, blue);
+	}
+	h2{
+		margin-left: 1em;
+		font-size: 18px;
+	}
+	h3{
+		margin-left: 2.5em;
+		font-size: 16px;
+	}
+	h4 {
+		margin-left: 5em;
+		font-size: 16px;
+		font-weight: 600;
+	}
+	pre {
+		white-space: pre;
+		/* word-wrap: break-word; */
+		word-break: keep-all;
+		overflow-x: scroll;
+	}
+</style>
+</head>
+
+<body>
+<div id="content">
+	<h2>JSTX教程</h2>
+	<div class="sample">
+		<h3>JSTX介绍</h3>
+		<div class="readme">感谢您使用jstx。<br><br>
+		jstx是一个前端的模板渲染引擎。不同于其他模板引擎，jstx除了提供输出，判断，循环等基本控制以外，
+		还提供了渲染回调，进行渲染行为的控制。jstx具有以下的特性：<br>
+		1. 高速（编译后直接渲染对应元素，渲染时不会遍历DOM，不使用虚拟DOM，一边计算，一边直接在DOM上操作。<br>
+		2. 扩展性强（支持回调，事件，组件，预处理，以及指令扩展）<br>
+		3. 小巧（不到50K）<br>
+		4. 学习成本及其低（没有任何新的概念，语法，只有纯粹的Javascript语法和概念）<br>
+		5. 按需定义数据绑定和数据驱动，实现双向绑定。<br>
+		</div>
+	</div>
+	<h2>基本功能</h2>
+	<div class="sample">
+		<h3>内容输出</h3>
+		<div content="output"></div>
+		<h3>属性设置</h3>
+		<div content="attr"></div>
+		<h3>基本控件</h3>
+		<div content="controls"></div>
+		<h3>条件判断</h3>
+		<div content="condition"></div>
+		<h3>循环</h3>
+		<div content="loop"></div>
+		<h3>循环中的过滤</h3>
+		<div content="filter"></div>
+		<h3>脚本执行</h3>
+		<div content="script"></div>
+	</div>
+	<h2>扩展功能</h2>
+	<div class="sample">
+		<h3>渲染回调</h3>
+		<div content="call"></div>
+		<h3>数据绑定</h3>
+		<div content="data"></div>
+		<h3>跳过渲染</h3>
+		<div content="recursive"></div>
+		<h3>编译忽略</h3>
+		<div content="skip"></div>
+		<h3>组件</h3>
+		<div content="include"></div>
+		<h3>组件模板</h3>
+		<div content="template"></div>
+		<h3>组件嵌套</h3>
+		<div content="tree"></div>
+	</div>
+	<h2>其他</h2>
+	<div class="sample">
+		<h3>事件处理</h3>
+		<div content="event"></div>
+		<h3>数据驱动</h3>
+		<div content="mvvm"></div>
+		<h3>组件加载</h3>
+		<div content="locator"></div>
+		<h3>预处理</h3>
+		<div content="prepare"></div>
+		<h3>指令扩展</h3>
+		<div content="instruct"></div>
+	</div>
+	<h2>样例</h2>
+	<div class="sample">
+		<div class="readme">
+			<ul>
+				<li><a href="samples/paginator.html" target="_blank">翻页控件</a></li>
+				<li><a href="samples/accordion.html" target="_blank">手风琴控件</li>
+				<li><a href="samples/tab.html" target="_blank">页签控件</li>
+				<li><a href="samples/carousel.html" target="_blank">轮播图控件</li>
+				<li>表格</li>
+				<li>树形控件</li>
+				<li>筛选控件</li>
+				<li>动画</li>
+				<li>延迟加载</li>
+			</ul>
+		</div>
+	</div>
+</div>
+<div id="toc">
+	
+</div>
+
+<script>
+	function encode(txt){
+		return txt.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+	}
+	var pathPrefix = "chapters/";
+	var i=0;
+	$("h2,h3").each(function(){
+		$(this).attr("id", "x" + i);
+		i ++;
+	})
+	
+	$("#toc").append($("h2,h3").clone());
+	$("#toc").find("h2,h3").each(function(){
+		var o = $(this);
+		var id = o.attr("id");
+		var html = o.html();
+		o.attr("id", null);
+		$(this).html("<a href='#" + id +"'>" + html + "</a>")
+	})
+	
+	$("[content]").each(function(){
+		var o = $(this);
+		var c = o.attr("content");
+		var t = $.get(pathPrefix+c+".html", function(txt){
+			var t = $("<div>" + txt + "</div>");
+			var readme = t.find("#readme");
+			readme.remove();
+			readme.removeAttr("id");
+			readme.addClass("readme");
+			txt = t.html();
+			
+			o.append("<h4>说明</h4>");
+			o.append(readme);
+			o.append("<h4>示例代码</h4>");
+			o.append("<pre class='src'>"+ encode(txt)+ "</pre>");
+			o.append("<h4>模板代码</h4>");
+			o.append("<pre class='src' id='" + c + "'></pre>");
+			o.append("<h4>执行结果</h4>");
+			var frame = $("<div class='result'></div>");
+			var iframeElement = document.createElement("iframe");
+			iframeElement.src="";
+			iframeElement.setAttribute("border", "0");
+			iframeElement.setAttribute("frameborder", "0");
+			iframeElement.setAttribute("width", "100%");
+			iframeElement.setAttribute("src", pathPrefix+c+".html");
+			frame.append(iframeElement);
+			o.append(frame);
+			iframeElement.onload = function(){
+				var iframeDoc = iframeElement.contentDocument? iframeElement.contentDocument : iframeElement.contentWindow.document;
+				$("#readme", iframeDoc).remove();
+			    iframeElement.height = iframeDoc.getElementById("test").clientHeight + 24;
+				iframeElement.onload = null;
+			};
+		})
+		
+	})
+	window.onresize = function(){
+		$("iframe").each(function(){
+			var iframeElement = this;
+			var iframeDoc = iframeElement.contentDocument? iframeElement.contentDocument : iframeElement.contentWindow.document;
+			iframeElement.height = iframeDoc.getElementById("test").clientHeight + 24;
+		})
+	}
+	
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="../../src/jst-core.js"></script>
+	<script src="../../3dparty/jquery.js"></script>
+	<script src="../../3dparty/less.js"></script>
+	<style>
+	#console p {
+		margin: 2px;
+	}
+	</style>
+</head>
+<body>
+	<div id="paginator">
+		<div id="test" jst-include="jst.ui.paginator" jst-include-data="paginator"></div>
+	</div>
+	
+	<div id="console"></div>
+</body>
+<script>
+window.jui = {base : "../../ui/"};
+jst.locator.map["jst.ui.paginator"] = jui.base + "paginator/paginator.html";
+
+var j = new jst(document.getElementById("paginator"));
+j.render({
+	paginator : {
+		current: 10,
+		size: 15,
+		total: 1000,
+		length: 5
+	}
+})
+
+$("#paginator").on("paginator:change", function(){
+	$("#console").append($("<p></p>").text(JSON.stringify(event.detail)));
+	setTimeout(function(){
+		j.render();
+	}, 100);
+})
+
+</script>
+</html>

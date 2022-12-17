@@ -1,0 +1,151 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	指令的扩展有三种用途，<br>
+	1. 用于扩展jstx的处理能力，比如：支持 switch，else。<br>
+	2. 用于封装常用的处理，比如：支持双向绑定<br>
+	3. 用于组件的封装<br>
+	要开发扩展指令，必须要了解 jstx 是如何解析指令并进行编译的过程。以下会具体介绍指令相关的内容，并给出一个简单的实例代码。<br>
+	1. 指令怎么写<br>
+	<pre class="src" style="background-color: aliceblue;margin-left:0">
+一个指令包含 指令名(name), 开始代码函数(compile),结束代码函数(cleanup) 三个内容。
+
+指令名(name) 不包含前缀 jst。可以使用 * 匹配任意字符。比如： data-*, one-*
+
+开始代码函数(compile),结束代码函数(cleanup) 必须返回jst.xcode 对象。
+比如：
+{
+	name: "test",
+	compile: function(jstx, node, opt, action) {...},
+	cleanup: function(jstx, node, opt, action) {...},
+}
+使用时，用 jst-test="..." 来调用。
+
+jst.xcode 对象 是一个代码行的集合。使用方法如下：
+var code = new jst.xcode();
+code.push("var x=0;", 1);// 1 代表缩进 1 个 TAB
+
+函数入参说明：
+	jstx: 代码 var j = new jst(dom) 创建的 jst 实例对象。
+	node: 当前DOM元素
+	opt : 创建 jst 对象时传入的 option 参数。
+		  jst 构造函数(new jst(tmpl, target, option)) 参数说明：
+			tmpl  : 模板的DOM元素
+			target: 渲染到的目标元素（省略时直接渲染到参数 tmpl 元素)
+			option: 编译时的参数。 默认值：
+					{
+						skipText: false, // 是否解析文本节点 {{...}} false 时，转换为含有 jst-text 的标签 
+						prefix: 'jst-',  // 指令前缀。可以修改为 v-, a: 等
+						textTag: 'text'  // 转换文本节点的元素Tag名。
+					}
+					编译运行时，会产生 seqno 属性，自定义属性时请不要使用这两个属性。
+	action: 编译器的当前动作。默认值如下：
+		{
+			match: false,    // 编译器内部使用，用于判断是否元素中含有 jst 指令
+			skip: false,     // 指示编译器跳过这个元素。用于 jst-skip 指令。
+			remove: false,   // 指示编译器跳过这个元素。用于 jst-script（预处理：&lt;script type="script/jst"&gt;) 指令。
+			recursive: true, // 指示编译器不要编译元素内部的内容（和运行时的 recursive 有区别！）。用于内部包含 富文本，地图，图标控件的元素。
+			nest: false,     // 指示编译器元素内部的内容是一个块结构。比如：if, for, each 指令。（类似AST的 children）
+			attrs: {},       // 该元素中所有定义的属性 
+			xattrs: {},      // 该元素中所有jst指令的属性，包括 属性值中含有{{...}} 的属性
+			tabs: 0          // 生成代码的缩进TAB数
+		};
+	
+		
+	</pre>
+	2. 指令的解析顺序<br>
+	<pre class="src" style="background-color: aliceblue;margin-left:0">
+指令是由执行顺序的。编译器按照指令的执行顺序，生成代码。默认的指令执行顺序如下：
+	jst-script
+	jst-skip
+	jst-begin -- jst-end
+	jst-if
+	jst-each
+	jst-for
+	jst-item-prepare
+	jst-filter
+	jst-item-begin -- jst-item-end
+	jst-html
+	jst-text
+	jst-checked
+	jst-selected
+	jst-data-*
+	jst-on*
+	jst-* （jst-style, jst-class, jst-src, jst-href 等，会在模板渲染后去掉前缀 jst-
+	jst-include-data
+	jst-include-option
+	jst-include-refresh
+	jst-include
+	jst-recursive
+
+按照从上到下的顺序，执行 compile 函数返回的代码，然后从下到上执行cleanup 函数返回的代码。
+begin, item-begin 只有 compile 函数, 对应 end, item-end 只有 cleanup 函数。
+script，skip指令最先执行，只有 compile 函数。
+
+比如：
+	&lt;div jst-begin="console.log('start')"
+	     jst-if="grade > 18"
+		 jst-each="subject: subjects"
+		 jst-text="{{subject.teacher}}"
+		 jst-end="console.log('end')"&gt;&lt;/div&gt;
+
+    对应生成的代码(伪代码)如下：
+	console.log('start');
+	if(grade > 18) {
+		startLoop(1);
+		Array.Of(teachers).forEach(function(subject, subject$index, subject$arr){
+			subject$first = subject$index == 0;
+			subject$last = subject$index == subject$arr.length - 1;
+			subject$even = subject$index % 2 == 0;
+			subject$odd = !subject$even;
+			$ctl = findOrAddControl(1);
+			$ctl.innerText = subject.teacher;
+		})
+		endLoop(1);
+	}
+
+	</pre>
+	3. DOM的操作<br>
+	<pre class="src" style="background-color: aliceblue;margin-left:0">
+在生成的代码里面，可以使用 $ctl 获取当前的元素。根据需要对元素进行操作。可以使用 $jst 获取当前模板的实例。$jst 包含的成员有：
+	parent - 父 jst 实例（jst-include 时，被包含组件的父组件）
+	children[] - 子jst 实例（jst-include 时，组件的所有子组件）
+	target - 渲染目标容器元素
+
+	通过对 jst 扩展，可以实现父子组件之间的消息传递。
+	</pre>
+</div>
+
+<div id="test" style="min-height:8em;">
+  一个简单指令 hello：
+  <div jst-hello="Joe"></div>
+
+</div>
+
+<script>
+(function(){
+	// 先定义一个指令：hello, 
+	var hello = {
+		name: "hello", //指令名
+		compile: function(jstx, node, opt, action, code) {
+			if(action.value == null) { //如果当前DOM元素没有 jst-hello 属性则返回空代码
+				return code;
+			}
+			// 设置当前DOM元素的innerText 为 hello 加上属性的值
+			code.push(`$ctl.innerText = 'hello ${action.value}'`, action.tabs);
+			return code;
+		}
+	}
+	// 找到text指令的位置，自定义的指令将在 text 指令前被编译执行
+	var index = jst.directives.indexOf(jst.directives.find(v => v.name="text"));
+	// 将 定义的指令 添加到对应的位置
+	jst.directives.splice(index, 0, hello);
+	
+	var j = new jst(document.getElementById("test"));
+	j.render().then(function(){
+		window.parent.document.getElementById("instruct").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

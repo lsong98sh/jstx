@@ -1,0 +1,20 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	通过 jst-skip 指令，来控制模板编译时，忽略元素内的内容。比如：内部有个地图组件或者富文本编辑组件。可以加速编译和渲染的速度。
+</div>
+<div id="test">
+	<div jst-skip jst-for="i=0; i < 5; ++ i">This is line {{i}}</div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({
+		color: "red"
+	}).then(function(){
+		window.parent.document.getElementById("skip").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

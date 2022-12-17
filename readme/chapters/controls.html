@@ -1,0 +1,66 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	本例中展示HTML的基本控件的写法。
+</div>
+<div id="test">
+	输入框 <input type="text" value="{{text}}" name="textbox" ><br><br>
+	
+	单选框1 <input type="radio" value="M" name="radiobtn1" jst-checked="gender==$ctl.value">男生
+	       <input type="radio" value="F" name="radiobtn1" jst-checked="gender==$ctl.value">女生<br><br>
+		   
+	单选框2 <input type="radio" value="M" name="radiobtn2" checked="{{gender==$ctl.value}}">男生
+	       <input type="radio" value="F" name="radiobtn2" checked="{{gender==$ctl.value}}">女生<br><br>
+		   
+	复选框1 <input type="checkbox" value="chinese" name="subject1" jst-checked="subject.indexOf($ctl.value) >=0">语文
+		   <input type="checkbox" value="math" name="subject1" jst-checked="subject.indexOf($ctl.value) >=0">数学
+		   <input type="checkbox" value="english" name="subject1" jst-checked="subject.indexOf($ctl.value) >=0">英语
+		   <br><br>
+		   
+	复选框2 <input type="checkbox" value="chinese" name="subject2" checked="{{subject.indexOf($ctl.value) >=0}}">语文
+		   <input type="checkbox" value="math" name="subject2" checked="{{subject.indexOf($ctl.value) >=0}}">数学
+		   <input type="checkbox" value="english" name="subject2" checked="{{subject.indexOf($ctl.value) >=0}}">英语
+		   <br><br>
+		   
+	下拉框1 <select jst-selected="color">
+		<option value="red">红色背景</option>
+		<option value="yellow">黄色背景</option>
+		<option value="purple">紫色背景</option>
+	</select><br><br>
+	
+	下拉框2 <select>
+		<option value="red" selected="{{color==$ctl.value}}">红色背景</option>
+		<option value="yellow" selected="{{color==$ctl.value}}">黄色背景</option>
+		<option value="purple" selected="{{color==$ctl.value}}">紫色背景</option>
+	</select><br><br>
+	
+	复选下拉框1 <select multiple="multiple" jst-selected="matrix">
+		<option value="length">长度</option>
+		<option value="width">宽度</option>
+		<option value="height">高度</option>
+	</select><br><br>
+	
+	复选下拉框2 <select multiple="multiple">
+		<option value="length" selected="{{matrix.indexOf($ctl.value)}}">长度</option>
+		<option value="width" selected="{{matrix.indexOf($ctl.value)}}">宽度</option>
+		<option value="height" selected="{{matrix.indexOf($ctl.value)}}">高度</option>
+	</select><br>
+</div>
+
+<script>
+(function(){
+	var d = { 
+		text : "输入框的值",
+		gender: "F" ,
+		subject: ["chinese", "english"],
+		color: "yellow",
+		matrix: ["width", "height"]
+	};
+	var j = new jst(document.getElementById("test"));
+	j.render(d).then(function(){
+		window.parent.document.getElementById("controls").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

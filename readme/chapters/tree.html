@@ -1,0 +1,64 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	下面的样例代码展示了一个树形数据的渲染。通过组件内部的递归嵌套，可以用及其少量的代码实现复杂的场景。
+</div>
+<!-- 模板 -->
+<ul id="tree" style="display:none">
+ <li>
+	<span jst-text="{{name}}"></span>
+    <ul jst-if="$data.children && children.length > 0" 
+		jst-for="var i=0; i < children.length; ++ i" 
+		jst-include="tree" jst-include-data="children[i]">
+    </ul>
+  </li>
+</ul>
+
+<div id="test">
+	
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("tree"), document.getElementById("test"));
+	j.render({
+		name: "根节点",
+		children: [
+			{
+				name: "车辆",
+				children:[
+					{
+						name: "汽车"
+					},
+					{
+						name: "轿车",
+						children: [
+							{
+								name: "燃气"
+							},
+							{
+								name: "电动"
+							},
+							{
+								name: "混动"
+							}
+						]
+					}
+				]
+			},{
+				name: "电脑",
+				children: [
+					{
+						name: "台式电脑"
+					},
+					{
+						name: "笔记本电脑"
+					}
+				]
+			}
+		]
+	}).then(function(){
+		window.parent.document.getElementById("tree").innerText = j.template.code;
+	})
+})();
+</script>
+

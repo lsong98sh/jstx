@@ -1,0 +1,17 @@
+<style>
+.pager {
+	display:inline-block;
+	border:1px solid blue;
+	border-left: 0;
+	min-width:1.5em;
+	text-align:center;
+	cursor:pointer;
+}
+
+.pager:first-child {
+	border-left: 1px solid blue;
+}
+</style>
+<div id="pager" style="display:none">
+	<span class="pager" jst-for="let i = start; i <= end; ++ i" jst-text="{{i}}"></span>
+</div>

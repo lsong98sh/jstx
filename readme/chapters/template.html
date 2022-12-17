@@ -1,0 +1,34 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	通过 jst-slot-* 指令，实现组件的自定义扩展。<br>
+	jst-slot-name 指令在含有 jst-include 指令的标签中使用，代表定义扩展。<br>
+	jst-slot-name 定义的扩展模板，在组件中通过 $jst.slot["name"] 引用，也可以用 jst-slot-ref 进行应用。<br>
+	jst-slot-data 指令配合 jst-slot-ref 使用，定义 用于slot渲染的数据。<br>
+	下面的示例代码，展示了Panel组件标题栏的扩展。<br>
+</div>
+<!-- 模板 -->
+<div id="panel" style="display:none">
+	<script type='script/jst'>
+		var title = $jst.target.getAttribute('title');
+	</script>
+	<div style="padding:5px; background-color: lightgray;" jst-slot-ref="title" jst-slot-data="{title: title}">title</div>
+	<div style="border: 1px solid lightgray;padding: 5px;" jst-text="{{content}}"></div>
+</div>
+
+<div id="test">
+	<div jst-include="panel" title="{{title}}" style="width:300px" jst-include-data="{content: content}">
+		<div jst-slot="title">
+			<span>《{{title}}》</span>
+		</div>
+	</div>
+</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	j.render({title: '标题', content: 'this is content'}).then(function(){
+		window.parent.document.getElementById("template").innerText = j.template.code;
+	})
+})();
+</script>
+
