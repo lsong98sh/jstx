@@ -22,7 +22,7 @@
 	var j = new jst(document.getElementById("test"));
 	$("#test").on("click", "#switch", function(){
 		d.visible = !d.visible;
-		j.render(d);
+		j.render();
 	});
 	j.render(d).then(function(){
 		window.parent.document.getElementById("condition").innerText = j.template.code;

@@ -105,47 +105,32 @@
 	}
 
 	/* 返回指定长度的随机字符串 */
+	let uuids = "0123456789abcdefghijklmnopqrstuvwxyz";
 	function uuid(len) {
-		return "1".repeat(len).split("").map(()=> {return "0123456789abcdefghijklmnopqrstuvwxyz".charAt(Math.floor(Math.random()*36));}).join("");
+		let arr = "";
+		for(let i =0; i < len; ++ i) {
+			arr += uuids.charAt(Math.floor(Math.random()*36)); 
+		} 
+		return arr 
 	}
 
-	/* 字符串替换 */
-	function replace(s, ary, exp) {
-		if (s == null || s.length == 0) return "";
-		if (ary == null || Object.keys(ary).length == 0) return s;
-		if (exp == undefined)
-			exp = new RegExp(Object.keys(ary).map(e => e.replace(/\\/g, "\\\\")).join("|"), "g");
-		return s.replace(exp, function(m) {
-			return ary[m];
-		});
-	}
-
-	/* 转换 html 的转义符 */
+	/* attribute 中的文本转代码 */
 	function attr2code(s) {
-		return replace(s, {
-			"&lt;": "<",
-			"&gt;": ">",
-			"&nbsp;": " ",
-			"&#39;": "'",
-			"&quot;": '"',
-			"&amp;": "&"
-		})
+		return (s == null)? "" : s;
 	};
 	
 	/* 纯文本转换字符串表达式。比如： ABC  转换为 "ABC" */
 	function text2code(s) {
-		if (s == null || s.length == 0) {
-			return '""';
-		}
-		return "\"" + replace(s, {
-			"\\": "\\\\",
-			"\"": "\\\"",
-			"\t": "\\t",
-			"\"": "\\\"",
-			"\'": "\\\'",
-			"\r": "\\r",
-			"\n": "\\n"
-		}) + "\"";
+		return (s == null || s.length == 0)? '""' : '"' + s.replace(/[\t\r\n'"\\]/g, function(c){
+			switch(c){
+				case "\\": return "\\\\";
+				case "\"": return "\\\"";
+				case "\t": return "\\t";
+				case "\'": return "\\\'";
+				case "\r": return "\\r";
+				case "\n": return "\\n"
+			}
+		}) + '"';
 	}
 
 	/* 解析带{{}}的文本，并转换为返回字符串的表达式 */
@@ -180,7 +165,6 @@
 			if(s instanceof xcode){
 				this.lines.push.apply(this.lines, s.lines.map(e => x + e));
 			}else{
-				//s = s.replace(/(\s|;)+$/gm, "");
 				if (!s.match(/\{\s*$/gm)) {
 					s += ";";
 				}
@@ -389,21 +373,9 @@
 				for (; i < n; ++i) {
 					key = keys[i];
 					if (key.indexOf(opt.prefix + "on") == 0) {
-						//if (!action.xattrs[key].match(/^[A-Za-z$_][A-Za-z0-9$_]*\(.*\)$/gm)) {
-						//	console.log("expression error for jst-on*.");
-						//} else {
-							let expr = action.xattrs[key],
-								fprop = key.substring(opt.prefix.length),
-								fname = expr.slice(0, expr.indexOf('(')),
-								fdata = "[" + expr.slice(expr.indexOf('(') + 1, -1) + "]";
-
-							//code.push(`jst.fx.data($ctl, "${fprop}", ${fdata});`, action.tabs);
-							//code.push(
-							//	`$ctl.${fprop}=(function(){return function(){with(Object.assign({}, $data, {$data: $data, $jst: $jst})){${fname}.apply(this, jst.fx.data(this, "${fprop}"))}}})();`
-							//, action.tabs);
-							code.push(`$ctl.${fprop} = (function($jst){return function(){ with($jst.methods){${expr}}}})($jst)`);
-							//code.push(`$ctl.${fprop} = ${expr}`);
-						//}
+						let expr = action.xattrs[key],
+							fprop = key.substring(opt.prefix.length);
+						code.push(`$ctl.${fprop} = function(){ ${expr} }`);
 						node.removeAttribute(key);
 						delete action.xattrs[key];
 					}
@@ -468,7 +440,7 @@
 					code.push(`jst.fx.include.set($jst, $ctl, 'name', ${attr2text(action.value)});`, action.tabs);
 					let cn = node.children;
 					for(let i = 0; i < cn.length; ++i){
-						let sn = cn[i].getAttribute(opt.prefix + "slot");
+						let sn = cn[i].getAttribute(opt.prefix + "slot-name");
 						if(sn){
 							code.push(`jst.fx.include.slot($jst, $ctl, ${text2code(sn)}, ${text2code(cn[i].innerHTML)});`, action.tabs);
 						}
@@ -1006,8 +978,7 @@
 				jst.fx.data(ctl, '$slot-data', value);
 			},
 			render: function(parent, ctl, slot){
-				let data = jst.fx.data(ctl, '$slot-data') || parent.data;
-				var refresh = false;
+				let data = jst.fx.data(ctl, '$slot-data') || parent.data, refresh = false;
 				if(jst.fx.data(ctl, '$slot-src') != slot){
 					jst.fx.data(ctl, '$slot-src', slot);
 					refresh = true;

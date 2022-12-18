@@ -1,0 +1,61 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	动画主要依靠CSS实现。没有特殊的指令支持。可以通过扩展指令，封装一些常用动画。
+</div>
+<div id="test">
+	<style>
+		.brick {
+			position:absolute;
+			width: 32px;
+			height: 32px;
+			line-height:32px;
+			text-align:center;
+			border: 1px solid slategrey;
+			/* 此处为动画用的CSS */
+			transition-property: top left;
+			transition-duration: 800ms;
+			transition-timing-function: cubic-bezier(1, 0, 0, 1);
+		}
+	</style>
+	<script type="script/jst">
+		function shuffle(){
+			for(let i =0; i < 25; ++i) {
+				var a = i;
+				var b = parseInt(Math.random()*25);
+				var c = left[a];
+				left[a] = left[b];
+				left[b] = c;
+				c = top[a];
+				top[a] = top[b];
+				top[b] = c;
+			}
+			$jst.render();
+		}
+	</script>
+	<button type="button" jst-onclick="shuffle()">变化</button>
+	<br><br>
+	<div style="width:162;height:162;border:1px solid gray;position:relative">
+		<div jst-for="let i =0; i < 25; ++ i" class="brick" jst-style="left:{{left[i]}}px;top:{{top[i]}}px">{{i}}</div>
+	</div>
+</div>
+
+<script>
+(function(){
+	var left = [], top = [];
+	for(let i = 0; i < 25; ++ i) {
+		left[i] = (i % 5) * 32;
+		top[i] = parseInt(i / 5) * 32;
+	}
+	var d = {  
+		left: left,
+		top: top
+	};
+	var j = new jst(document.getElementById("test"));
+	j.render(d).then(function(){
+		console.log(j.template.code);
+		window.parent.document.getElementById("animate").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

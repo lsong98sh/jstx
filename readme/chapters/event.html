@@ -12,14 +12,22 @@
 		<div>全局的事件处理就是最原始的事件处理方式。处理函数必须定义在全局或者window对象下。</div>
 		<button onclick="click1(this)">点击我</button>
 		<br><br>
-		
+
 		<div>内部脚本绑定事件一般是通过jst脚本实现。</div>
-		<button name="click2">点击我</button>
+		方式1：<button jst-onclick="myclick($ctl)">点击我</button>
+		<script type="script/jst">
+			function myclick(obj) {
+				alert(obj.innerHTML + ":" + count++);
+			}
+		</script>
+		<br><br>
+		
+		方式2：<button name="click2">点击我</button>
 		<script type="script/jst">
 			var ctl = $target.querySelector("[name=click2]");
 			if(ctl.onclick == null){
 				ctl.onclick = function(){
-					alert("click2");
+					alert("click2" + ":" + count++);
 				}
 			}
 		</script>
@@ -50,20 +58,24 @@
 				}
 			}
 		</script>
+
+		<div>注意循环中事件处理使用局部变量的问题。</div>
+		正确写法：<button jst-for="let i=0;i<5;++i" name="{{i}}" jst-onclick="alert(i)">({{i}})</button>
+		<br><br>
+		错误写法：<button jst-for="var i=0;i<5;++i" name="{{i}}" jst-onclick="alert(i)">({{i}})</button>
+		<br><br>
 		
 	</div>
 </div>
 
 <script>
 (function(){
+	var d = { count: 1 };
 	window.click1 = function(target){
-		alert("click1");
+		alert("click1" + ":" + d.count ++);
 	}
-
 	var j = new jst(document.getElementById("test"));
-	j.render({
-		count: 1
-	}).then(function(){
+	j.render(d).then(function(){
 		window.parent.document.getElementById("event").innerText = j.template.code;
 	})
 })();

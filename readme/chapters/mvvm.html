@@ -1,4 +1,5 @@
 <script src="../../src/jst-core.js"></script>
+
 <div id="readme">
 	jstx 本身不提供 MVVM 模式的数据驱动。数据的改动触发页面渲染本身只适合数据量较小，页面元素较少的场景。
 	当数据变化并重新渲染时，虽然jst不会重绘整个组件，但是仍然需要执行所有的jst指令。建议在复杂业务场景下使用手动刷新。
@@ -9,23 +10,15 @@
 </div>
 <div id="test">
 	<div>
-		<input name="name" jst-data-bindobj="$data" bindkey="name" jst-end="bind($ctl)">
+		<input name="name" jst-oninput="$data.name = $ctl.value" value="{{name}}">
 		<br>
 		你好 {{name}}
-		
+		<br>
+		<button type="button" jst-onclick="reset()">重置</button>
 		<script type="script/jst">
-			// 设置初始值，修改事件时获取输入的值，回写。
-			function bind(ctl){
-				if(ctl.oninput == null){
-					let obj = jst.fx.data(ctl, "bindobj");
-					let key = jst.fx.attr(ctl, "bindkey");
-					ctl.value = obj[key];
-					ctl.oninput = function(){
-						let obj = jst.fx.data(this, "bindobj");
-						let key = jst.fx.attr(this, "bindkey");
-						obj[key] = this.value;
-					}
-				}
+			function reset(){
+				$data.name = "joe";
+				$jst.refresh();
 			}
 		</script>
 		
@@ -34,9 +27,6 @@
 
 <script>
 (function(){
-	window.click1 = function(target){
-		alert("click1");
-	}
 	var j = new jst(document.getElementById("test"));
 	//延时刷新
 	var timer = 0;
@@ -52,11 +42,13 @@
 	var d = {
 		name: "joe"
 	};
-	//使用Proxy, 监听值修改，刷新
+	//使用Proxy, 监听值修改，刷新(重置为joe的时候，手动刷新)
 	d = new Proxy(d, {
 	    set(target, key, value) {
 	      target[key] = value;
-		  refresh();
+		  if(value != 'joe') {
+			refresh();
+		  }
 	    }
 	});
 	j.render(d).then(function(){
