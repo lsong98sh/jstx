@@ -1,0 +1,83 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	通过jst-bind指令可以绑定输入框的内容。
+</div>
+<div id="test">
+	单行输入框：<br>
+	<input type="text" jst-bind="text" name="textbox"><br>
+	值：{{text}}<br><br>
+
+	多行输入框<br>
+	<textarea jst-bind="content" name="textarea" style="height:100px"></textarea><br>
+	值：<pre>{{content}}</pre><br><br>
+
+	单选<br>
+	<input type="radio" name="color" value='red' jst-bind="color">red
+	<input type="radio" name="color" value='blue' jst-bind="color">blue
+	<input type="radio" name="color" value='green' jst-bind="color">green<br>
+	值：{{color}}<br><br>
+
+	多选<br>
+	<input type="checkbox" name="lang" value='english' jst-bind="lang">english
+	<input type="checkbox" name="lang" value='chinese' jst-bind="lang">chinese
+	<input type="checkbox" name="lang" value='franch' jst-bind="lang">franch<br>
+	值：{{JSON.stringify(lang)}}<br><br>
+
+	下拉单选<br>
+	<select name="size" jst-bind="grade">
+	 <option value="large">large</option>
+	 <option value="meduim">meduim</option>
+	 <option value="small">small</option>
+	</select><br>
+	值：{{grade}}<br><br>
+
+	多选<br>
+	<select multiple name="addition" jst-bind="addition">
+	 <option value="sugar">sugar</option>
+	 <option value="ice">ice</option>
+	 <option value="jerry">jerry</option>
+	</select><br>
+	值：{{JSON.stringify(addition)}}<br>
+	
+	表格<br>
+	<table broder="1">
+		<tr>
+			<td>name</td>
+			<td>age</td>
+			<td><a href="javascript:void(0)" jst-onclick="$data.children.push({name:'', age: ''});$jst.render()">ADD</a></td>
+		</tr>
+		<tr jst-each="item : children">
+			<td><input type="text" jst-bind="item.name"></td>
+			<td><input type="number" jst-bind="item.age"></td>
+			<td><a href="javascript:void(0)" jst-onclick="$data.children.splice(item$index, 1);$jst.render()">DEL</a></td>
+		</tr>
+	</table>
+	值：{{JSON.stringify(children)}}
+</div>
+
+<script>
+(function(){
+	var d =  {
+		text: 'this is content', 
+		content: "line1\r\nline2", 
+		color: 'red', 
+		lang: ['english', 'chinese'],
+		grade: 'small', 
+		addition: ['jerry', 'ice'],
+		children:[{
+			name: "alice",
+			age: 18
+		},{
+			name: "joe",
+			age: 20
+		}]
+	};
+	var j = new jst(document.getElementById("test"));
+	j.render(d).then(function(){
+		window.parent.document.getElementById("bind").innerText = j.template.code;
+	})
+})();
+
+	
+</script>

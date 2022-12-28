@@ -1,5 +1,5 @@
 (function() {
-	let special_attributes = {
+	var special_attributes = {
 		"input": new Set(["disabled", "readonly", "checked", "required"]),
 		"textarea": new Set(["disabled", "readonly"]),
 		"select": new Set(["disabled", "readonly", "multiple"]),
@@ -105,35 +105,40 @@
 	}
 
 	/* 返回指定长度的随机字符串 */
-	let uuids = "0123456789abcdefghijklmnopqrstuvwxyz";
 	function uuid(len) {
-		let arr = "";
-		for(let i =0; i < len; ++ i) {
-			arr += uuids.charAt(Math.floor(Math.random()*36)); 
-		} 
-		return arr 
+		let n = len ? len : 16,
+			s = [],
+			digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+		while (n--) {
+			s.push(digits.charAt(Math.floor(Math.random() * digits.length)));
+		}
+		return s.join("");
 	}
 
-	/* attribute 中的文本转代码 */
+	/* 字符串替换 */
+	function replace(s, ary, exp) {
+		if (s == null || s.length == 0) return "";
+		if (ary == null || Object.keys(ary).length == 0) return s;
+		if (exp == undefined)
+			exp = new RegExp(Object.keys(ary).map(e => e.replace(/\\/g, "\\\\")).join("|"), "g");
+		return s.replace(exp, function(m) {
+			return ary[m];
+		});
+	}
+
+	/* 转换 html 的转义符 */
 	function attr2code(s) {
-		return (s == null)? "" : s;
+		return replace(s, {
+			"&lt;": "<",
+			"&gt;": ">",
+			"&nbsp;": " ",
+			"&#39;": "'",
+			"&quot;": '"',
+			"&amp;": "&"
+		})
 	};
-	
-	/* 纯文本转换字符串表达式。比如： ABC  转换为 "ABC" */
-	function text2code(s) {
-		return (s == null || s.length == 0)? '""' : '"' + s.replace(/[\t\r\n'"\\]/g, function(c){
-			switch(c){
-				case "\\": return "\\\\";
-				case "\"": return "\\\"";
-				case "\t": return "\\t";
-				case "\'": return "\\\'";
-				case "\r": return "\\r";
-				case "\n": return "\\n"
-			}
-		}) + '"';
-	}
 
-	/* 解析带{{}}的文本，并转换为返回字符串的表达式 */
+	/* 解析文本，并转换未返回字符串的表达式 */
 	function attr2text(s) {
 		if (s == null || s.length == 0) {
 			return '""';
@@ -141,7 +146,13 @@
 		return mustach(s).map(e => {
 			let t = attr2code(e.value);
 			if (e.type == "text") {
-				return text2code(t);
+				return "\"" + replace(t, {
+					"\\": "\\\\",
+					"\"": "\\\"",
+					"\t": "\\t",
+					"\r": "\\r",
+					"\n": "\\n"
+				}) + "\"";
 			} else {
 				let v = "_s_";
 				t = t.substring(2, t.length - 2);
@@ -165,10 +176,15 @@
 			if(s instanceof xcode){
 				this.lines.push.apply(this.lines, s.lines.map(e => x + e));
 			}else{
-				if (!s.match(/\{\s*$/gm)) {
+				try{
+				s = s.replace(/(\s|;)+$/gm, "");
+				if (!s.match(/\{$/gm)) {
 					s += ";";
 				}
 				this.lines.push(x + s);
+				}catch(e){
+					throw e;
+				}
 			}
 			return this;
 		},
@@ -177,41 +193,41 @@
 		}
 	});
 	/* 指令定义 */
-	let directives = [
-		{
+	let directives = [{
 			name: "script",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
 				if (action.value == null) {
 					return "";
 				}
 				action.remove = true;
 				action.recursive = false;
 				action.skip = true;
-				return code.push(node.innerText, action.tabs);
+				return (new xcode()).push(node.innerText, action.tabs);
 			}
 		},
 		{
 			name: "skip",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
 				if (action.value != null) {
 					action.recursive = false;
 					action.skip = true;
 				}
-				return code;
+				return "";
 			}
 		},
 		{
 			name: "begin",
-			compile: function(jst, node, opt, action, code) {
-				return code.push(attr2code(action.value), action.tabs);
+			compile: function(jst, node, opt, action) {
+				return (new xcode()).push(attr2code(action.value), action.tabs);
 			},
-			cleanup: function(jst, node, opt, action, code) {
-				return code.push(attr2code(action.attrs[opt.prefix + "end"]), action.tabs);
+			cleanup: function(jst, node, opt, action) {
+				return (new xcode()).push(attr2code(action.attrs[opt.prefix + "end"]), action.tabs);
 			}
 		},
 		{
 			name: "if",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					action.nest = true;
 					code.push(`if(${attr2code(action.value)}){`, action.tabs ++);
@@ -219,7 +235,8 @@
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					-- action.tabs;
 					code.push(`}else{`, action.tabs);
@@ -231,7 +248,8 @@
 		},
 		{
 			name: "each",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					let pos = action.value.indexOf(":");
 					if(pos > 0){
@@ -248,7 +266,8 @@
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`});`, -- action.tabs);
 					code.push(`$ctx.end(${action.seqno});`, action.tabs);
@@ -258,7 +277,8 @@
 		},
 		{
 			name: "for",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					action.nest = true;
 					code.push(`$ctx.begin(${action.seqno});`, action.tabs);
@@ -266,7 +286,8 @@
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`}`, -- action.tabs);
 					code.push(`$ctx.end(${action.seqno});`, action.tabs);
@@ -276,13 +297,14 @@
 		},
 		{
 			name: "item-prepare",
-			compile: function(jst, node, opt, action, code) {
-				return code.push(attr2code(action.value), action.tabs);
+			compile: function(jst, node, opt, action) {
+				return (new xcode()).push(attr2code(action.value), action.tabs);
 			}
 		},
 		{
 			name: "filter",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.attrs[opt.prefix + "for"] || action.attrs[opt.prefix + "each"]) {
 					if (action.value != null) {
 						code.push(`if(${attr2code(action.value)}){`, action.tabs ++);
@@ -291,7 +313,8 @@
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if ((action.attrs[opt.prefix + "for"] || action.attrs[opt.prefix + "each"]) && action.value != null) {
 					if (action.value != null) {
 						code.push(`}`, -- action.tabs);
@@ -302,31 +325,32 @@
 		},
 		{
 			name: "item-begin",
-			compile: function(jst, node, opt, action, code) {
-				return code.push(attr2code(action.value), action.tabs);
+			compile: function(jst, node, opt, action) {
+				return (new xcode()).push(attr2code(action.value), action.tabs);
 			},
-			cleanup: function(jst, node, opt, action, code) {
-				return code.push(attr2code(action.attrs[opt.prefix + "item-end"]), action.tabs);
+			cleanup: function(jst, node, opt, action) {
+				return (new xcode).push(attr2code(action.attrs[opt.prefix + "item-end"]), action.tabs);
 			}
 		},
 		{
 			name: "html",
-			compile: function(jst, node, opt, action, code) {
-				return code.push((action.value == null) ? "" : `jst.fx.html($ctl, ${attr2text(action.value)})`, action.tabs);
+			compile: function(jst, node, opt, action) {
+				return (new xcode()).push((action.value == null) ? "" : `jst.fx.html($ctl, ${attr2text(action.value)})`, action.tabs);
 			}
 		},
 		{
 			name: "text",
-			compile: function(jst, node, opt, action, code) {
-				return code.push((action.value == null) ? "" : `jst.fx.text($ctl, ${attr2text(action.value)})`, action.tabs);
+			compile: function(jst, node, opt, action) {
+				return (new xcode()).push((action.value == null) ? "" : `jst.fx.text($ctl, ${attr2text(action.value)})`, action.tabs);
 			}
 		},
 		{
 			name: "checked",
-			compile: function(jst, node, opt, action, code) {
-				return code;
+			compile: function(jst, node, opt, action) {
+				return new xcode();
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null && node.tagName == "INPUT" && (node.type.toLowerCase() =="radio" || node.type.toLowerCase() == "checkbox")) {
 					code.push(`$ctl.checked = ${action.value};`, action.tabs);
 				}
@@ -335,10 +359,11 @@
 		},
 		{
 			name: "selected",
-			compile: function(jst, node, opt, action, code) {
-				return code;
+			compile: function(jst, node, opt, action) {
+				return new xcode();
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null && node.tagName == "SELECT") {
 					code.push(`jst.fx.selected($ctl, ${action.value})`, action.tabs);
 				}
@@ -346,31 +371,17 @@
 			}			
 		},
 		{
-			name: "bind",
-			compile: function(jst, node, opt, action, code) {
-				return code;
-			},
-			cleanup: function(jst, node, opt, action, code) {
-				if (action.value != null) {
-					code.push(`jst.fx.data($ctl, '$jst-bind-get', function(){return ${action.value}})`, action.tabs);
-					code.push(`jst.fx.data($ctl, '$jst-bind-set', function(v){${action.value}=v})`, action.tabs);
-					code.push(`jst.fx.data($ctl, '$jst-bind-jst', $jst)`, action.tabs);
-					code.push(`jst.fx.bind($jst, $ctl)`, action.tabs);
-				}
-				return code;
-			}			
-		},
-		{
 			name: "data-*",
-			compile: function(jst, node, opt, action, code) {
-				let keys = Object.keys(action.xattrs),
+			compile: function(jst, node, opt, action) {
+				let code = new xcode(),
+					keys = Object.keys(action.xattrs),
 					i = 0,
 					n = keys.length,
 					key;
 				for (; i < n; ++i) {
 					key = keys[i];
 					if (key.indexOf(opt.prefix + "data-") == 0) {
-						code.push(`jst.fx.data($ctl, "${key.substring(opt.prefix.length + 5)}", ${attr2code(action.attrs[key])});`, action.tabs);
+						code.push(`jst.fn.data($ctl, "${key.substring(opt.prefix.length + 5)}", ${attr2code(action.attrs[key])});`, action.tabs);
 						node.removeAttribute(key);
 						delete action.xattrs[key];
 					}
@@ -380,17 +391,30 @@
 		},
 		{
 			name: "on*",
-			compile: function(jst, node, opt, action, code) {
-				let keys = Object.keys(action.xattrs),
+			compile: function(jst, node, opt, action) {
+				let code = new xcode(),
+					keys = Object.keys(action.xattrs),
 					i = 0,
 					n = keys.length,
 					key;
 				for (; i < n; ++i) {
 					key = keys[i];
 					if (key.indexOf(opt.prefix + "on") == 0) {
-						let expr = action.xattrs[key],
-							fprop = key.substring(opt.prefix.length);
-						code.push(`$ctl.${fprop} = function(){ ${expr} }`);
+						//if (!action.xattrs[key].match(/^[A-Za-z$_][A-Za-z0-9$_]*\(.*\)$/gm)) {
+						//	console.log("expression error for jst-on*.");
+						//} else {
+							let expr = action.xattrs[key],
+								fprop = key.substring(opt.prefix.length),
+								fname = expr.slice(0, expr.indexOf('(')),
+								fdata = "[" + expr.slice(expr.indexOf('(') + 1, -1) + "]";
+
+							//code.push(`jst.fn.data($ctl, "${fprop}", ${fdata});`, action.tabs);
+							//code.push(
+							//	`$ctl.${fprop}=(function(){return function(){with(Object.assign({}, $data, {$data: $data, $jst: $jst})){${fname}.apply(this, jst.fn.data(this, "${fprop}"))}}})();`
+							//, action.tabs);
+							code.push(`$ctl.${fprop} = (function($jst){return function(){ with($jst.methods){${expr}}}})($jst)`);
+							//code.push(`$ctl.${fprop} = ${expr}`);
+						//}
 						node.removeAttribute(key);
 						delete action.xattrs[key];
 					}
@@ -400,8 +424,9 @@
 		},
 		{
 			name: "*",
-			compile: function(jst, node, opt, action, code) {
-				let keys = Object.keys(action.xattrs),
+			compile: function(jst, node, opt, action) {
+				let code = new xcode(),
+					keys = Object.keys(action.xattrs),
 					i = 0,
 					n = keys.length,
 					key, prop;
@@ -410,7 +435,7 @@
 					if (key.indexOf(opt.prefix) == 0) {
 						prop = key.substring(opt.prefix.length);
 					}
-					code.push(`jst.fx.attr($ctl, "${prop}", ${attr2text(action.attrs[key])});`, action.tabs);
+					code.push(`jst.fn.attr($ctl, "${prop}", ${attr2text(action.attrs[key])});`, action.tabs);
 					node.removeAttribute(key);
 					delete action.xattrs[key];
 				}
@@ -419,7 +444,8 @@
 		},
 		{
 			name: "include-data",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`jst.fx.include.set($jst, $ctl, 'data', ${attr2code(action.value)});`, action.tabs);
 				}
@@ -428,7 +454,8 @@
 		},
 		{
 			name: "include-option",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`jst.fx.include.set($jst, $ctl, 'option', ${attr2code(action.value)});`, action.tabs);
 				}
@@ -437,30 +464,29 @@
 		},
 		{
 			name: "include-refresh",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
-					code.push(`jst.fx.include.set($jst, $ctl, 'refresh', ${attr2code(action.value)});`, action.tabs);
+					if(action.value == 'true' || action.value == 'false'){
+						code.push(`jst.fx.include.set($jst, $ctl, 'refresh', ${action.value});`, action.tabs);
+					}else{
+						code.push(`jst.fx.include.set($jst, $ctl, 'refresh', ${attr2code(action.value)});`, action.tabs);
+					}
 				}
 				return code;
 			}
 		},
 		{
 			name: "include",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`jst.fx.include.set($jst, $ctl, 'name', ${attr2text(action.value)});`, action.tabs);
-					let cn = node.children;
-					for(let i = 0; i < cn.length; ++i){
-						let sn = cn[i].getAttribute(opt.prefix + "slot-name");
-						if(sn){
-							code.push(`jst.fx.include.slot($jst, $ctl, ${text2code(sn)}, ${text2code(cn[i].innerHTML)});`, action.tabs);
-						}
-					}
-					node.innerHTML="";
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`jst.fx.include.render($jst, $ctl)`, action.tabs);
 				}
@@ -468,33 +494,17 @@
 			}
 		},
 		{
-			name: "slot-data",
-			compile: function(jst, node, opt, action, code) {
-				if (action.value != null) {
-					code.push(`jst.fx.slot.set($jst, $ctl, ${attr2code(action.value)});`, action.tabs);
-				}
-				return code;
-			},
-		},
-		{
-			name: "slot-ref",
-			compile: function(jst, node, opt, action, code) {
-				if (action.value != null) {
-					code.push(`jst.fx.slot.render($jst, $ctl, ${attr2text(action.value)});`, action.tabs);
-				}
-				return code;
-			},
-		},
-		{
 			name: "recursive",
-			compile: function(jst, node, opt, action, code) {
+			compile: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					action.nest = true;
 					code.push(`if(${attr2code(action.value)}){`, action.tabs ++);
 				}
 				return code;
 			},
-			cleanup: function(jst, node, opt, action, code) {
+			cleanup: function(jst, node, opt, action) {
+				let code = new xcode();
 				if (action.value != null) {
 					code.push(`}`, -- action.tabs);
 				}
@@ -510,7 +520,7 @@
 	];
 
 	/* 编译模板 */
-	function compile(jst, target, opt, dnt, psn) {
+	function compile(jst, target, opt, psn) {
 		if (!target.hasChildNodes()) {
 			return ;
 		}
@@ -559,7 +569,8 @@
 							action.attrs[e.nodeName] = e.nodeValue;
 							if (e.nodeName.indexOf(opt.prefix) == 0) {
 								action.match = true;
-								if (directives.filter(d => (opt.prefix + d.name) == e.nodeName).length == 0) {
+								if (directives.filter(d => (opt.prefix + d.name) == e.nodeName)
+									.length == 0) {
 									action.xattrs[e.nodeName] = e.nodeValue;
 								}
 							} else if (e.nodeValue.indexOf("{{") >= 0 && e.nodeValue.indexOf("}}") > 0) {
@@ -570,12 +581,10 @@
 					});
 
 					if (action.match) {
-						node.setAttribute(opt.prefix + "id-" + jst.id, ++opt.seqno);
-						node.setAttribute(opt.prefix + "pid-" + jst.id, (psn==-1)? "x" : psn);
+						node.setAttribute(opt.prefix + "id-" + opt.id, ++opt.seqno);
+						node.setAttribute(opt.prefix + "pid-" + opt.id, (psn==-1)? "x" : psn);
 						action.seqno = opt.seqno;
-						let cl = code.lines.length;
-						code.push(`{`, action.tabs++);
-						code.push(`let $ctl=$ctx.get(${opt.seqno})`, action.tabs);
+						code.push(`{let $ctl=$ctx.get(${opt.seqno})`, action.tabs);
 						for (n = 0; n < directives.length; ++n) {
 							directive = directives[n];
 							if (action.skip || action.remove) {
@@ -583,12 +592,12 @@
 							} else {
 								action.value = node.getAttribute(opt.prefix + directive.name);
 								if (directive.compile) {
-									code.push(directive.compile.call(directive, jst, node, opt, action, new xcode()));
+									code.push(directive.compile.call(directive, jst, node, opt, action));
 								}
 							}
 						}
 						if (action.remove) {
-							code.lines.splice(cl, 2);
+							code.lines.splice(code.lines.lastIndexOf(`{let $ctl=$ctx.get(${opt.seqno});`), 1);
 							--opt.seqno;
 						}
 					}
@@ -596,7 +605,7 @@
 						if (action.nest) {
 							code.push(`$ctx.push(${opt.seqno});`, action.tabs);
 						}
-						code.push(compile(jst, node, opt, dnt, (action.nest)? opt.seqno : psn), action.tabs);
+						code.push(compile(jst, node, opt, (action.nest)? opt.seqno : psn), action.tabs);
 						if (action.nest) {
 							code.push(`$ctx.pop();`, action.tabs);
 						}
@@ -607,12 +616,12 @@
 								directive = directives[n];
 								action.value = node.getAttribute(opt.prefix + directive.name);
 								if (directive.cleanup) {
-									code.push(directive.cleanup.call(directive, jst, node, opt, action, new xcode()));
+									code.push(directive.cleanup.call(directive, jst, node, opt, action));
 								}
 								node.removeAttribute(opt.prefix + directive.name);
 							}
-							dnt[action.seqno] = node;
-							code.push("}", --action.tabs);
+							opt.dnt[action.seqno] = node;
+							code.push("}")
 						} else {
 							target.removeChild(node);
 							--i;
@@ -624,13 +633,12 @@
 		return code;
 	}
 
-	/* 节点上下文处理 */
-	jst.context = function(tpl, el) {
-		this.id = tpl.id;
-		this.opt = tpl.option;
-		this.dnt = tpl.dnt;
-		this.ids = this.opt.prefix + "id-" + this.id,
-		this.pids = this.opt.prefix + "pid-" + this.id,
+	/* 渲染上下文处理 */
+	function JstRenderContext(el, opt, dnt) {
+		this.opt = opt;
+		this.dnt = dnt;
+		this.ids = opt.prefix + "id-" + opt.id,
+		this.pids = opt.prefix + "pid-" + opt.id,
 		this.dms = {
 			children: [],
 			pos: -1,
@@ -640,7 +648,7 @@
 		this.top = this.dms;
 		this.stk = [];
 	}
-	Object.assign(jst.context.prototype, {
+	Object.assign(JstRenderContext.prototype, {
 		init: function(){
 			this.dms = this.top;
 			this.stk = [];
@@ -703,7 +711,7 @@
 				i = m.index,
 				d = m.nodes[i].dom;
 			if (d.nodeType != 8) {
-				let n = document.createComment(this.id);
+				let n = document.createComment(this.opt.id);
 				d.parentNode.insertBefore(n, d);
 				d.parentNode.removeChild(d);
 				m.nodes[i].dom = n;
@@ -766,103 +774,55 @@
 		}
 	});
 
-	let templates = {};
-	
+	var templates = {};
 	/* jst 主类 */
 	function jst(template, target, option, parent) {
-		let self = this, prop = Object.defineProperty;
-		
-		// 组件通讯
-		let evh = [];
-		self.emit = function(msg, data, e){
-			if(!e) {
-				e = {
-					stopPropagation: false,
-					preventDefault: false,
-					source: self
-				}
-			} else {
-				let callbacks = evh.concat();
-				for(let n = 0; n < callbacks.length; ++ n) {
-					if(msg == callbacks[n].msg){
-						if(callbacks[n].callback.call(self, data, e) === false){
-								e.preventDefault = e.stopPropagation = true;
-						}
-						if(e.preventDefault){
-							return;
-						}
-					}
-				}
-				if(e.stopPropagation || e.preventDefault){
-					return;
-				}
-			}
-			if(self.parent) {
-				self.parent.emit.call(self.parent, msg, data, e);
-			}
+		var awaits = [], self = this;
+		this.addAwait = function(promise) {
+			awaits.push(promise);
 		}
-		self.on = function(msg, callback){
-			evh.push({msg: msg, callback:callback});
-		}
-		self.off = function(msg, callback){
-			evh = evh.filter(e => !((msg == undefined || e.msg == msg) && (callback == undefined || e.callback == callback)));
-		}
-		
-		prop(self, "children", {
-			value: []
-		});
-		if(arguments.length == 0) {
-			prop(self, "parent", {
-				value: null
-			});
-			return;
-		}
-		
-		prop(self, "parent", {
-			value: parent? parent : jst.app
-		});
-		self.parent.children.push(self);
-		
-		prop(self, "option", {
-			value: Object.assign({}, jst.option, option)
-		});
-		
-		prop(self, "awaits", {
-			value: []
-		});
-		
-		let prepares = [];
-		// 预处理
 		Object.keys(jst.prepare).forEach(function(selector, index, array){
 			let objs = template.querySelectorAll(selector);
 			for(let i=0; i < objs.length; ++ i){
 				let r = jst.prepare[selector](self, objs[i], template);
 				if(r){
-					prepares.push(r);
+					awaits.push(r);
 				}
 			}
 		});
 		
-		prop(self, "target", {
+		this.ctx = null;
+		this.ready = Promise.all(awaits).then(awaits = []);
+
+		let prop = Object.defineProperty;
+		prop(this, "parent", {
+			value: parent
+		});
+		prop(this, "target", {
 			value: target ? target : template
 		});
-		
-		self.ctx = null;
-		self.slots = {};
-
 		if(!template.id){
 			template.setAttribute("id", uuid(8));
 		}
-		let ready = Promise.all(prepares).then(()=>{
-			prepares.length = 0;
+
+		prop(this, "children", {
+			value: []
+		});
+		
+		this.methods = {};
+
+		this.ready.then(()=>{
 			if(!templates[template.id]){
-				self.id = uuid(8);
-				let opt = Object.assign({}, jst.option, option, {
-					seqno: -1
+				var opt = Object.assign({}, jst.option, option, {
+						id: uuid(8),
+						seqno: -1,
+						dnt: []
 				}), 
 				tmpl = template.cloneNode(true),
-				dnt = [],
-				code = (new xcode()).push(compile(self, tmpl, opt, dnt, -1),2).toString();
+				code = (new xcode()).push(compile(self, tmpl, opt, -1),2).toString(),
+				dnt = opt.dnt;
+				delete opt.seqno;
+				delete opt.dnt;
 				
 				templates[template.id] = Object.freeze({
 					dom: tmpl,
@@ -870,80 +830,75 @@
 					html: tmpl.innerHTML,
 					dnt: dnt,
 					option: opt,
-					id: self.id,
-					executor: new Function("$jst", "$ctx", "$data", "$target", "\twith($data){\r\n" + code + "\r\n\t}")
+					executor: new Function("$jst", "$ctx", "$data", "$target", "\tvar $ctl;\r\n\twith($data){\r\n" + code + "\r\n\t}")
 				});
-				delete self.id;
-			} 
+			}
 			prop(self, "template", {
 				value: templates[template.id]
 			});
-			//console.log(this.template.code);
 		});
-		
-		let renders = 0;
-		self.render = function(data, force) {
-			self.data = (typeof(data) == 'object')? data : ((self.data)? self.data : {});
-			self.force = (force===true)? true : self.force;
-			if(renders > 0) {
-				return ready;
-			}
-			++ renders;
-			ready = ready.then(function(){
-				if (self.template.dnt.length > 0 && (self.force || !self.ctx)) {
-					self.target.innerHTML = self.template.html;
-					self.ctx = new jst.context(self.template, self.target);
-					//console.log(this.ctx);
-				}
-				if(self.ctx){
-					self.ctx.init();
-				}
-				self.awaits.length = 0;
-				self.template.executor(self, self.ctx, self.data, self.target);
-				self.force = false;
-				return new Promise(function (resolve, reject) {
-				    setTimeout(function () {
-				        Promise.all(self.awaits).then(function(){
-							renders = 0;
-							resolve();
-						});
-				    }, 0);
-				});
-			});
-			return ready;
-		};
-		
-		self.refresh = function(force){
-			return self.render(self.data, force);
-		};
+		//console.log(this.template.code);
 	}
-	jst.app = new jst();
+	jst.prototype.render = function(data, force) {
+		var self = this;
+		return this.ready.then(function(){
+			if (force || !self.ctx) {
+				self.target.innerHTML = self.template.html;
+				self.ctx = new JstRenderContext(self.target, self.template.option, self.template.dnt);
+				//console.log(this.ctx);
+			}
+			self.ctx.init();
+			if(typeof(data) == 'object'){
+				self.data = data;
+			}
+			if(typeof(self.data) != 'object') {
+				self.data = {};
+			}
+			self.template.executor(self, self.ctx, self.data, self.target);
+		});
+	};
+	jst.prototype.refresh = function(){
+		return this.render(this.data);
+	};
+	jst.prototype.trigger = function(name, data){
+		this.target.dispatchEvent(new CustomEvent("jst-event-" + name, {
+			detail: data,
+		}));
+	};
+	jst.prototype.bind = function(name, callback){
+		var obj = this;
+		this.target.addEventListener("jst-event-" + name, function(){
+			callback.apply(obj, arguments);
+		});
+	};
 	
 	jst.option = {
 		skipText: false,
 		prefix: 'jst-',
-		textTag: 'text'
+		textTag: 'text',
 	};
 	
-	/* 指令的执行代码 */
-	jst.fx = {
-		data: function(node, name, value) {
-			node.jstdata = node.jstdata || {};
+	jst.fn = {
+		data: function(node, name, value, def) {
+			if (node.jstdata == undefined) {
+				node.jstdata = {};
+			}
 			if (arguments.length == 2) {
 				return node.jstdata[name];
 			} else if (arguments.length == 3) {
-				if(node.jstdata[name] != value) {
+				node.jstdata[name] = value;
+			} else if(def){
+				if(node.jstdata[name] == undefined){
 					node.jstdata[name] = value;
-					return true;
 				}
-				return false;
+				return node.jstdata[name];
 			}
 		},
 		attr: function(node, name, value) {
 			if (arguments.length == 2) {
 				return node.getAttribute(name);
 			}
-			let tagName = node.nodeName.toLocaleLowerCase();
+			var tagName = node.nodeName.toLocaleLowerCase();
 			name = name.toLocaleLowerCase();
 			if (special_attributes[tagName] && special_attributes[tagName].has(name)) {
 				if (value === false || value === "false" || value === 0) {
@@ -975,26 +930,30 @@
 					}
 				}
 			}
-		},
+		}
+	}
+
+	/* 指令的执行代码 */
+	jst.fx = {
 		text: function(ctl, txt){
-			let s = jst.fx.data(ctl, "$fx_text"); 
+			let s = jst.fn.data(ctl, "$fx_text"); 
 			if(s == null || s != txt){
 				ctl.innerText = txt;
-				jst.fx.data(ctl, "$fx_text", txt);
+				jst.fn.data(ctl, "$fx_text", txt);
 			}
 		},
 		html: function(ctl, txt){
-			let s = jst.fx.data(ctl, "$fx_html"); 
+			let s = jst.fn.data(ctl, "$fx_html"); 
 			if(s == null || s != txt){
 				ctl.innerHTML = txt;
-				jst.fx.data(ctl, "$fx_html", txt);
+				jst.fn.data(ctl, "$fx_html", txt);
 			}
 		},
 		selected: function(ctl, value){
 			if(Array.isArray(value)){
 				if(ctl.multiple){
-					let values = value.map(v => "" + v);
-					for (let i = 0; i < ctl.options.length; i++){
+					var values = value.map(v => "" + v);
+					for (var i = 0; i < ctl.options.length; i++){
 						if (values.indexOf(ctl.options[i].value)) {
 							ctl.options[i].selected = true;
 						}
@@ -1007,104 +966,25 @@
 					value = null;
 				}
 			}
-			for (let i = 0; i < ctl.options.length; i++){
+			for (var i = 0; i < ctl.options.length; i++){
 				if (ctl.options[i].value == value) {
 					ctl.options[i].selected = true;
 					break;
 				}
 			}
 		},
-		bindfx : function() {
-			let ctl = this, setter = jst.fx.data(ctl, '$jst-bind-set');
-			if(ctl.tagName == 'INPUT') {
-				if(ctl.type.toLowerCase() == "radio"){
-					setter(ctl.value);
-				} else if(ctl.type.toLowerCase() == "checkbox") {
-					let list = [], checked = parent.target.querySelectorAll(`input[name=${ctl.name}]:checked`);
-					for(let i=0; i < checked.length; ++ i){
-						list.push(checked[i].value);
-					}
-					setter(list);
-				} else if(ctl.type.toLowerCase() == "image") {
-				} else if(ctl.type.toLowerCase() == "button") {
-				} else if(ctl.type.toLowerCase() == "reset") {
-				} else if(ctl.type.toLowerCase() == "submit") {
-				} else if(ctl.type.toLowerCase() == "file") {		
-				} else if(ctl.type.toLowerCase() == "number") {		
-					setter(ctl.value - 0);
-				} else if(ctl.type.toLowerCase() == "range") {		
-					setter(ctl.value - 0);
-				} else {
-					setter(ctl.value);
-				}
-			} else if(ctl.tagName == 'TEXTAREA') {
-				setter(ctl.value);
-			} else if(ctl.tagName == 'SELECT') {
-				if(ctl.multiple) {
-					let list=[];
-					for(let i=0; i < ctl.options.length; ++ i){
-						if(ctl.options[i].selected) {
-							list.push(ctl.options[i].value);
-						}
-					}
-					setter(list);
-				} else {
-					for(let i=0; i < ctl.options.length; ++ i){
-						if(ctl.options[i].selected){
-							setter(ctl.options[i].value);
-							break;
-						}
-					}
-				}
-			}
-			jst.fx.data(ctl, '$jst-bind-jst').render();
-		},
-		bind: function(parent, ctl) {
-			let value = jst.fx.data(ctl, '$jst-bind-get')(), setter = false;
-			if(ctl.tagName == 'INPUT') {
-				if(ctl.type.toLowerCase() =="radio"){
-					ctl.checked = value == ctl.value;
-					setter = 'change';
-				} else if(ctl.type.toLowerCase() == "checkbox") {
-					ctl.checked = value.indexOf(ctl.value) > -1;
-					setter = 'change';
-				} else if(ctl.type.toLowerCase() == "image") {
-					ctl.src = value;
-				} else if(ctl.type.toLowerCase() == "button") {
-				} else if(ctl.type.toLowerCase() == "reset") {
-				} else if(ctl.type.toLowerCase() == "submit") {
-				} else if(ctl.type.toLowerCase() == "file") {		
-				} else {
-					ctl.value = value;
-					setter = 'input';
-				}
-			} else if(ctl.tagName == 'TEXTAREA') {
-				ctl.value = value;
-				setter = 'input';
-			} else if(ctl.tagName == 'SELECT') {
-				if(ctl.multiple) {
-					for(let i=0; i < ctl.options.length; ++ i){
-						if(value.indexOf(ctl.options[i].value) > -1){
-							ctl.options[i].selected = true;
-						}
-					}
-				} else {
-					for(let i=0; i < ctl.options.length; ++ i){
-						if(ctl.options[i].value == value){
-							ctl.options[i].selected = true;
-							break;
-						}
-					}
-				}
-				setter = 'change';
-			}
-			if(setter) {
-				ctl.removeEventListener(setter, jst.fx.bindfx);
-				ctl.addEventListener(setter, jst.fx.bindfx);
-			}
-		},
+		// for: {
+		// 	begin: function(){},
+		// 	increase: function(){},
+		// 	end: function(){}
+		// },
+		// each: {
+		// 	begin: function(){},
+		// 	increase: function(){},
+		// 	end: function(){}
+		// },
 		each: function(item, name, fn){
-			let ary = item;
+			var ary = item;
 			if(typeof(item) == "string"){
 				ary = item.split("");
 			}
@@ -1116,60 +996,29 @@
 			}
 			return ary;
 		},
-		slot: {
-			set: function(parent, ctl, value){
-				jst.fx.data(ctl, '$jst-slot-data', value);
-			},
-			render: function(parent, ctl, name){
-				let html = parent.slots[name],
-					slot = jst.fx.data(ctl, '$jst-slot-jst'),
-					refresh = !(jst.fx.data(ctl, '$jst-slot-name', name) && jst.fx.data(ctl, '$jst-slot-html', html));
-				if(refresh || slot == null) {
-					let dom = document.createElement("div");
-					dom.innerHTML = html;
-					slot = new jst(dom, ctl, parent.option, parent);
-					jst.fx.data(ctl, '$jst-slot-jst', slot);
-					refresh = true;
-				}
-				parent.awaits.push(slot.render(jst.fx.data(ctl, '$jst-slot-data') || parent.data, refresh));
-			}
-		},
 		include: {
+			data: function(parent, ctl){ return {
+				refresh: false,
+				option: {},
+				data: {}
+			}},
 			set: function(parent, ctl, name, value){
-				jst.fx.data(ctl, '$jst-include-' + name, value);
-			},
-			slot: function(parent, ctl, name, value){
-				let slots = jst.fx.data(ctl, '$jst-include-slots') || {};
-				slots[name] = value;
-				jst.fx.data(ctl, '$jst-include-slots', slots);
+				let t = jst.fn.data(ctl, '$include', jst.fx.include.data(parent, ctl), true);
+				t[name] = value;
 			},
 			render: function(parent, ctl){
-				let inc = {
-					name: jst.fx.data(ctl, '$jst-include-name'),
-					data: jst.fx.data(ctl, '$jst-include-data'),
-					slots: jst.fx.data(ctl, '$jst-include-slots') || {},
-					refresh: jst.fx.data(ctl, '$jst-include-refresh'),
-					option: jst.fx.data(ctl, '$jst-include-option'),
-					jst: jst.fx.data(ctl, '$jst-include-jst')
-				};
-				if(jst.fx.data(ctl, '$jst-include-pre', inc.name)){
-					if(inc.jst) {
-						let i = parent.children.indexOf(inc.jst);
-						if (i > -1) {
-							parent.children.splice(i, 1);
-						}
-					}
-					jst.locator(inc.name).then(function(dom){
-						if(dom.id == inc.name){
-							inc.jst = new jst(dom, ctl, inc.option, parent);
-							inc.jst.slots = inc.slots;
-							jst.fx.data(ctl, '$jst-include-jst', inc.jst);
-							parent.awaits.push(inc.jst.render(inc.data,inc.refresh));
+				let t = jst.fn.data(ctl, '$include', jst.fx.include.data(parent, jst), true);
+				if(t.pre != t.name ){
+					jst.locator(t.name).then(function(dom){
+						if(dom.id == t.name){
+							t.jst = new jst(dom, ctl, t.option, parent);
+							t.jst.render(t.data, t.refresh);
+							parent.children.push(t.jst);
+							t.pre = t.name;
 						}
 					});
 				} else {
-					inc.jst.slots = inc.slots;
-					parent.awaits.push(inc.jst.render(inc.data, inc.refresh));
+					t.jst.render(t.data, t.refresh);
 				}
 			}
 		}
@@ -1177,7 +1026,7 @@
 	
 	jst.prepare = {
 		'script[type="script/jst"]': function(jst, elm, template){
-			let node = document.createElement("div");
+			var node = document.createElement("div");
 			node.innerHTML = elm.innerHTML;
 			let src = elm.getAttribute("src");
 			if(src != null){
@@ -1202,14 +1051,11 @@
 	};
 	
 	jst.locator = function(name){
-		if(jst.locator.fetch[name]){
-			return jst.locator.fetch[name];
-		}
-		let dom = document.createElement("div");
+		var dom = document.createElement("div");
 		dom.innerText=`template name:${name} not found`;
 		dom.id = name;
 		
-		let url = jst.locator.map[name];
+		var url = jst.locator.map[name];
 		if(url){
 			let base = "";
 			if(url.lastIndexOf('/') >= 0){
@@ -1221,7 +1067,7 @@
 				}
 				return base + src;
 			}
-			jst.locator.fetch[name] = fetch(url, {credentials: 'include'}).then(response => response.text()).then(t => {
+			return fetch(url, {credentials: 'include'}).then(response => response.text()).then(t => {
 				let d = document.createElement("div");
 				d.innerHTML = t;
 				let n = d.firstElementChild, m;
@@ -1229,77 +1075,50 @@
 					m = n.nextElementSibling;
 					if(n.id == name){
 						dom = n;
-						dom.setAttribute("base-url", base);
+					dom.setAttribute("base-url", base);
 					}else if(n.tagName == 'LINK'){
 						n.setAttribute("href", normalizeUrl(n.getAttribute("href")));
 						document.head.appendChild(n);
 					}else if(n.tagName == 'STYLE'){
 						document.head.appendChild(n);
 					}else if(n.tagName == 'SCRIPT'){
-						if(n.getAttribute("src")){
-							n.setAttribute("src", normalizeUrl(n.getAttribute("src")));
-						}
+						n.setAttribute("src", normalizeUrl(n.getAttribute("src")));
 						document.head.appendChild(n);
-					}else{
-						document.body.appendChild(n);
 					}
 					n = m;
 				}
 				return dom;
 			}).catch(() => dom);
 		}else{
-			jst.locator.fetch[name] = new Promise(function(resolve, reject){
-				let elm = document.getElementById(name);
+			return new Promise(function(resolve, reject){
+				var elm = document.getElementById(name);
 				resolve(elm == null? dom : elm);
 			});
 		}
-		return jst.locator.fetch[name];
 	};
 	jst.locator.map = {};
-	jst.locator.fetch = {};
 	
-	
-	
-	// 消息总线
-	let msgbus = {
-		messages: [], 
-		callbacks:[]
-	}
-	function dispatch() {
-		if(dispatch.timer == undefined){
-			dispatch.timer = setTimeout(function(){
-				let msgs = msgbus.messages.concat(), callbacks = msgbus.callbacks.concat();
-				msgbus.messages = [];
-				dispatch.timer = undefined;
-				for(let i = 0; i < msgs.length; ++ i) {
-					for(let n = 0; n < callbacks.length; ++ n) {
-						if(msgs[i].msg == callbacks[n].msg){
-							callbacks[n].callback(msgs[i].data);
+	jst.event = {
+		bind: function(dom, name, selector, callback){
+			dom.addEventListener(name, function(event){
+				let doms = dom.querySelectorAll(selector);
+				if(doms.length){
+					let e = window.event || event;
+					let path = event.path || (event.composedPath && event.composedPath());
+					for(let i = 0; i < path.length; ++ i){
+						for(let n = 0; n < doms.length; ++ n){
+							if(doms[n] == path[i]){
+								callback.apply(doms[n], arguments);
+								return;
+							}
 						}
 					}
 				}
-			}, 1);
-			return;
+			})
 		}
 	}
-	jst.publish = function(msg, data){
-		msgbus.messages.push({msg: msg, data: data});
-		dispatch();
-	}
-	jst.subscribe = function(msg, callback){
-		msgbus.callbacks.push({msg:msg, callback: callback});
-	}
-	jst.unsubscribe = function(msg, callback){
-		msgbus.callbacks = msgbus.callbacks.filter(e => !(e.msg == msg && e.callback == callback));
-	}
 	
-	jst.special_attributes = special_attributes;
 	jst.directives = directives;
 	jst.xcode = xcode;
-	jst.uuid = uuid;
-	jst.attr2code = attr2code;
-	jst.attr2text = attr2text;
-	jst.text2code = text2code;
-	
 	window.jst = jst;
 })();

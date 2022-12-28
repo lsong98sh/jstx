@@ -52,7 +52,6 @@
 	};
 	var j = new jst(document.getElementById("test"));
 	j.render(d).then(function(){
-		console.log(j.template.code);
 		window.parent.document.getElementById("animate").innerText = j.template.code;
 	})
 })();

@@ -1,0 +1,66 @@
+<script src="../../src/jst-core.js"></script>
+<div id="readme">
+	通过 jst.emit/on ，实现组件的事件通知和处理。
+	全局 jst.app 对象，为最顶层组件，可以监听所有的事件。
+</div>
+
+
+
+<!-- 模板 -->
+<div id="header" style="display:none">
+	<div style="padding:5px; background-color: lightgray;" jst-text="{{title}}" 
+		jst-onclick="$jst.emit('title-click', $ctl)"></div>
+</div>
+<div id="panel" style="display:none">
+	<script type='script/jst'>
+		var title = $jst.target.getAttribute('title');
+		var status = $jst.target.getAttribute('status');
+	</script>
+	</script>
+	<div jst-include="header" jst-include-data="{title: title}"></div>
+	
+	<div jst-if="status=='expanded'" style="border: 1px solid lightgray;padding: 5px;">
+		<pre jst-text="{{content}}"></pre>
+	</div>
+
+
+
+</div>
+
+<div id="test">
+	<script type="script/jst">
+		let panel = null;
+		if(jst.fx.data($target, "title", "1")) { // 防止二次设置
+			$jst.on("title-click", function(data, ev){
+				let status = panel.getAttribute("status");
+				if(status == 'collapsed') {
+					status = 'expanded';
+				} else {
+					status = 'collapsed';
+				}
+				panel.setAttribute("status", status);
+				// ev.stopPropagation = true; // 全局 jst.app 上的监听不会执行
+				$jst.render();
+			})
+		}
+	</script>
+	<div jst-begin='panel=$ctl' jst-include="panel" title="{{title}}" style="width:300px" 
+		jst-include-data="{content: content}" 
+		status='expanded'>
+	</div>
+</div>
+<div id="msg">&nbsp;</div>
+
+<script>
+(function(){
+	var j = new jst(document.getElementById("test"));
+	jst.app.on("title-click", function(data, ev){
+		document.getElementById("msg").innerHTML += "clicked."
+	});
+	j.render({title: '标题(点击试试)', content: 'this is content\r\nline2\r\nline3'}).then(function(){
+		window.parent.document.getElementById("emit").innerText = j.template.code;
+	})
+	
+})();
+</script>
+

@@ -1,0 +1,29 @@
+<script src="../../src/jst-core.js"></script>
+<script src="../../3dparty/jquery.js"></script>
+<div id="readme">
+	jst.pulish , jst.subscribe, jst.unsubscribe 用来处理消息。
+	消息时异步处理的。
+</div>
+<div id="test" style="padding-top:20px; padding-bottom:20px">
+	<select jst-bind="color" jst-onchange="jst.publish('change-color', $ctl.value)">
+		<option value="red">红色背景</option>
+		<option value="yellow">黄色背景</option>
+		<option value="purple">紫色背景</option>
+	</select>
+</div>
+
+
+<script>
+(function(){
+	var d = { color: "yellow" };
+	var j = new jst(document.getElementById("test"));
+	j.render(d).then(function(){
+		window.parent.document.getElementById("message").innerText = j.template.code;
+	})
+	jst.subscribe('change-color', function(color){
+		j.target.style.backgroundColor = color;
+	});
+})();
+
+	
+</script>
