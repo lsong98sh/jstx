@@ -1,5 +1,6 @@
 (function() {
 	let special_attributes = {
+		"*": new Set(["draggable"]),
 		"input": new Set(["disabled", "readonly", "checked", "required"]),
 		"textarea": new Set(["disabled", "readonly"]),
 		"select": new Set(["disabled", "readonly", "multiple"]),
@@ -346,6 +347,15 @@
 			}			
 		},
 		{
+			name: "bind-converter",
+			compile: function(jst, node, opt, action, code) {
+				if (action.value != null) {
+					code.push(`jst.fx.data($ctl, '$jst-bind-converter', ${action.value})`, action.tabs);
+				}
+				return code;
+			}
+		},
+		{
 			name: "bind",
 			compile: function(jst, node, opt, action, code) {
 				return code;
@@ -358,7 +368,7 @@
 					code.push(`jst.fx.bind($jst, $ctl)`, action.tabs);
 				}
 				return code;
-			}			
+			}		
 		},
 		{
 			name: "data-*",
@@ -905,6 +915,9 @@
 				    setTimeout(function () {
 				        Promise.all(self.awaits).then(function(){
 							renders = 0;
+							if(self.option.callback) {
+								self.option.callback();
+							}
 							resolve();
 						});
 				    }, 0);
@@ -945,7 +958,7 @@
 			}
 			let tagName = node.nodeName.toLocaleLowerCase();
 			name = name.toLocaleLowerCase();
-			if (special_attributes[tagName] && special_attributes[tagName].has(name)) {
+			if ((special_attributes[tagName] && special_attributes[tagName].has(name)) || special_attributes['*'].has(name)) {
 				if (value === false || value === "false" || value === 0) {
 					if (node.getAttribute(name) != null) {
 						node.removeAttribute(name);
@@ -1015,16 +1028,31 @@
 			}
 		},
 		bindfx : function() {
-			let ctl = this, setter = jst.fx.data(ctl, '$jst-bind-set');
+			let ctl = this, setter = jst.fx.data(ctl, '$jst-bind-set'), jsto = jst.fx.data(ctl, '$jst-bind-jst'), conv = jst.fx.data(ctl, '$jst-bind-converter');
 			if(ctl.tagName == 'INPUT') {
 				if(ctl.type.toLowerCase() == "radio"){
 					setter(ctl.value);
 				} else if(ctl.type.toLowerCase() == "checkbox") {
-					let list = [], checked = parent.target.querySelectorAll(`input[name=${ctl.name}]:checked`);
-					for(let i=0; i < checked.length; ++ i){
-						list.push(checked[i].value);
+					let list = [], checked = jsto.target.querySelectorAll(`input[name=${ctl.name}]:checked`),
+					chkbox = jsto.target.querySelectorAll(`input[name=${ctl.name}]`);
+					if(chkbox.length == 1){
+						if(chkbox[0].value == "true") {
+							setter(checked.length == 1? true : false);
+						} else if(chkbox[0].value == "1") {
+							setter(checked.length == 1? 1 : 0);
+						} else if(chkbox[0].value == "on") {
+							setter(checked.length == 1? "on" : "off");
+						} else if(chkbox[0].value == "yes") {
+							setter(checked.length == 1? "yes" : "no");
+						} else {
+							setter(checked.length == 1? chkbox[0].value : null);
+						}
+					} else {
+						for(let i=0; i < checked.length; ++ i){
+							list.push(checked[i].value);
+						}
+						setter(list);					
 					}
-					setter(list);
 				} else if(ctl.type.toLowerCase() == "image") {
 				} else if(ctl.type.toLowerCase() == "button") {
 				} else if(ctl.type.toLowerCase() == "reset") {
@@ -1035,10 +1063,10 @@
 				} else if(ctl.type.toLowerCase() == "range") {		
 					setter(ctl.value - 0);
 				} else {
-					setter(ctl.value);
+					setter((conv)? conv.setter(ctl.value, ctl) : ctl.value);
 				}
 			} else if(ctl.tagName == 'TEXTAREA') {
-				setter(ctl.value);
+				setter((conv)? conv.setter(ctl.value, ctl) : ctl.value);
 			} else if(ctl.tagName == 'SELECT') {
 				if(ctl.multiple) {
 					let list=[];
@@ -1060,26 +1088,30 @@
 			jst.fx.data(ctl, '$jst-bind-jst').render();
 		},
 		bind: function(parent, ctl) {
-			let value = jst.fx.data(ctl, '$jst-bind-get')(), setter = false;
+			let value = jst.fx.data(ctl, '$jst-bind-get')(), conv = jst.fx.data(ctl, '$jst-bind-converter'), setter = false;
 			if(ctl.tagName == 'INPUT') {
 				if(ctl.type.toLowerCase() =="radio"){
 					ctl.checked = value == ctl.value;
 					setter = 'change';
 				} else if(ctl.type.toLowerCase() == "checkbox") {
-					ctl.checked = value.indexOf(ctl.value) > -1;
+					ctl.checked = Array.isArray(value)? value.indexOf(ctl.value) > -1 : (""+value) == (""+ctl.value);
 					setter = 'change';
 				} else if(ctl.type.toLowerCase() == "image") {
 					ctl.src = value;
+					setter = 'input';
 				} else if(ctl.type.toLowerCase() == "button") {
 				} else if(ctl.type.toLowerCase() == "reset") {
 				} else if(ctl.type.toLowerCase() == "submit") {
 				} else if(ctl.type.toLowerCase() == "file") {		
+				} else if(ctl.type.toLowerCase() == "text") {		
+					ctl.value = (conv)? conv.getter(value, ctl) : value;
+					setter = 'input';
 				} else {
 					ctl.value = value;
 					setter = 'input';
 				}
 			} else if(ctl.tagName == 'TEXTAREA') {
-				ctl.value = value;
+				ctl.value = (conv)? conv.getter(value, ctl) : value;
 				setter = 'input';
 			} else if(ctl.tagName == 'SELECT') {
 				if(ctl.multiple) {
